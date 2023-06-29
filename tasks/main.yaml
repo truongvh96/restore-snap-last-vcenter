@@ -1,13 +1,11 @@
-- name: Power Off VM
-  vmware_guest_powerstate:
+- name: Get the list of virtual machines in the directory
+  community.vmware.vmware_vm_info:
     hostname: "{{ vcenter_hostname }}"
     username: "{{ vcenter_username }}"
     password: "{{ vcenter_password }}"
-    validate_certs: False
-    datacenter: "{{ datacenter_name }}"
-    name: "{{ vm_name }}"
-    state: powered-off
-  delegate_to: localhost
+    validate_certs: false
+    folder: "{{ folder }}"
+  register: vm_info
 
 - name: Get VM Snapshot Facts
   community.vmware.vmware_guest_snapshot_info:
@@ -16,14 +14,15 @@
     password: "{{ vcenter_password }}"
     validate_certs: False
     datacenter: "{{ datacenter_name }}"
-    folder: "/{{ datacenter_name }}/vm/"
-    name: "{{ vm_name }}"
+    folder: "{{ folder }}"
+    name: "{{ item.guest_name }}"
   register: snapshot_info
+  loop: "{{ vm_info.virtual_machines }}"
   delegate_to: localhost
 
-- name: Debug Snapshot Info
+- name: Print snapshot info
   debug:
-    var: snapshot_info
+    var: snapshot_info.results
 
 - name: Restore Latest Snapshot
   community.vmware.vmware_guest_snapshot:
@@ -32,19 +31,10 @@
     password: "{{ vcenter_password }}"
     validate_certs: False
     datacenter: "{{ datacenter_name }}"
-    folder: "/{{ datacenter_name }}/vm/"
-    name: "{{ vm_name }}"
+    folder: "{{ folder }}"
+    name: "{{ item.item.guest_name }}"
     state: revert
-    snapshot_name: "{{ snapshot_info.guest_snapshots.current_snapshot  }}"
+    snapshot_name: "{{ item.guest_snapshots.current_snapshot.name }}"
   delegate_to: localhost
+  loop: "{{ snapshot_info.results }}"
 
-- name: Power On VM
-  vmware_guest_powerstate:
-    hostname: "{{ vcenter_hostname }}"
-    username: "{{ vcenter_username }}"
-    password: "{{ vcenter_password }}"
-    validate_certs: False
-    datacenter: "{{ datacenter_name }}"
-    name: "{{ vm_name }}"
-    state: powered-on
-  delegate_to: localhost
