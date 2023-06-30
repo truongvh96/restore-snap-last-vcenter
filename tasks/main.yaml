@@ -38,3 +38,14 @@
   delegate_to: localhost
   loop: "{{ snapshot_info.results }}"
 
+- name: Power On VMs
+  community.vmware.vmware_guest_powerstate:
+    hostname: "{{ vcenter_hostname }}"
+    username: "{{ vcenter_username }}"
+    password: "{{ vcenter_password }}"
+    validate_certs: False
+    datacenter: "{{ datacenter_name }}"
+    name: "{{ item.guest_name }}"
+    state: powered-on
+  loop: "{{ vm_info.virtual_machines }}"
+  delegate_to: localhost
